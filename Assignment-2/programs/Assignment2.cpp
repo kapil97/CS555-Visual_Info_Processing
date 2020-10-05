@@ -2,8 +2,75 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
+
+cv::Mat LoGEdgeGeneration(cv::Mat input_image, int mask_size,double sigma){
+    cv::Mat enhanced_image;
+    int min = -(mask_size/2);
+    int max = (mask_size/2);
+    int mask[mask_size][mask_size];
+    double e = 2.71,pi=3.1415;
+    int scaling = 0;
+    int l = 0;
+    if(sigma==1.4 && mask_size==7)
+        scaling=483;
+    else
+        scaling=40000;
+
+    for(int i=min;i<=max;i++){
+        int m=0;
+        for(int j=min;j<=max;j++)
+        {   
+            double val= (-1.0)* (1.0/(pow(sigma,4)*pi)) * (1-((pow(i,2)+pow(j,2))/(2*pow(sigma,2)))) * pow(e,(-1* ((pow(i,2)+pow(j,2))/(2*pow(sigma,2)))));  
+            mask[l][m++]=int(val*scaling);
+        }
+        l++;
+    }
+    for(int i=0; i<mask_size;i++){
+        for(int j=0;j<mask_size;j++){
+            std::cout<<mask[i][j]<<" ";
+        }
+        std::cout<<std::endl;
+    }
+    enhanced_image=input_image.clone();
+
+    for (int i=0; i <mask_size; i++)
+    {
+        for (int j=0; j<mask_size; j++)
+        {
+            enhanced_image.at<uchar>(i, j) = 0;
+        }
+    }
+
+    for (int x = max; x < input_image.rows - max; x++)
+    {
+        for (int y = max; y < input_image.cols - max; y++)
+        {
+            int p = 0, q = 0;
+            int value = 0;
+            for (int s = min; s <= max; s++)
+            {
+                for (int t = min; t <= max; t++)
+                {
+                    
+                    value = value + mask[p][q] * input_image.at<uchar>(x + s, y + t);
+                    q++;
+                }
+                p++;
+            }
+            if (value < 0)
+            {
+                value = 0;
+            }
+            else
+            {
+                enhanced_image.at<uchar>(x, y) = int(value) / 10000000;
+            }
+        }
+    }
+    return enhanced_image;
+}
 cv::Mat unsharpMaskingGaussian(cv::Mat input_image){
-    cv::Mat blurred_image=input_image.clone();
+    cv::Mat blurred_image = input_image.clone();
     double gaussianMask[3][3]={ {1/22.0,3/22.0,1/22.0}, {3/22.0,6/22.0,3/22.0},{1/22.0,3/22.0,1/22.0} };
 
     for (int i=0; i<input_image.rows; i++)
@@ -112,6 +179,18 @@ int main(int argc, char** argv){
     cv::imshow("Edge Image ES1",Es1);
     cv::Mat Es2 = sobelOperation(f2);
     cv::imshow("Edge Image ES2",Es2);
+    std::cout<<"MASK 7x7 for E1_1"<<std::endl;
+    cv::Mat E1_1=LoGEdgeGeneration(f1,7,1.4);
+    std::cout<<"MASK 7x7 for E2_1"<<std::endl;
+    cv::Mat E2_1=LoGEdgeGeneration(f2,7,1.4);
+    std::cout<<"MASK 11x11 for E1_2"<<std::endl;
+    cv::Mat E1_2=LoGEdgeGeneration(f1,11,5);
+    std::cout<<"MASK 11x11 for E1_2"<<std::endl;
+    cv::Mat E2_2=LoGEdgeGeneration(f2,11,5);
+    cv::imshow("LoG Edge Detection 7X7 for E1", E1_1);
+    cv::imshow("LoG Edge Detection 7x7 for E2",E2_1);
+    cv::imshow("LoG Edge Detection 11X11 for E1", E1_2);
+    cv::imshow("LoG Edge Detection 11x11 for E2",E2_2);
     cv::waitKey(0);
     return 0;
 }
