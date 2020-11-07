@@ -4,8 +4,61 @@
 #include <iostream>
 using namespace std;
 using namespace cv;
+class Shape{
+public:
+	int x,y,p;
+};
 
 Mat binaryImage;
+int pixels;
+vector<Shape> shape, temp;
+int visited[1000][1000]={}; 
+
+bool check(Mat img, int i,int j){
+  return (i>=0 && i<img.rows && j>=0 && j<img.cols);
+}
+void DFS(Mat img, int i, int j)
+{ 	
+	
+	pixels++;                 
+	visited[i][j]=1; 
+	// cout<<"DFS"<<" i: "<<i<<" j "<<j<<visited[i][j]<<" "<<endl;               
+	if(check(img, i+1,j) && !visited[i+1][j] && img.at<uchar>(i+1, j) == 255)
+	      DFS(img,i+1,j);
+
+	if(check(img, i,j+1) && !visited[i][j+1] && img.at<uchar>(i, j+1) == 255)
+	      DFS(img,i,j+1);
+	
+	if(check(img, i-1,j) && !visited[i-1][j] && img.at<uchar>(i-1, j) == 255)
+	      DFS(img,i-1,j);
+	
+	if(check(img, i,j-1) && !visited[i][j-1] && img.at<uchar>(i, j-1) == 255)
+	      DFS(img,i,j-1);	
+}
+
+int count_regions(Mat input){
+	// cout<<"Here"<<endl;
+    int num_comp=0;
+    int k = 0;
+    for (int i = 0; i < input.rows; i++){
+        for (int j = 0; j < input.cols; j++){
+			// cout<<visited[i][j]<<endl; 
+			// cout<<visited[i][j]<<" "; 
+            if (visited[i][j]==0 && input.at<uchar>(i, j) == 255)
+            {    
+				pixels=0; 
+				cout<<"Here DFS"<<endl;                 
+				DFS(input, i, j);
+				shape[k++].x = i;
+				shape[k++].y = j;
+				shape[k++].p = pixels;
+				if (pixels > 41)
+					num_comp++;      
+            }
+		}
+	}
+    return num_comp;
+}
 
 Mat convert_binary(Mat input_img, int threshold)
 {
@@ -49,6 +102,7 @@ Mat erosion_binary(Mat input_image){
 	  }
     return eroded_image;
 }
+
 Mat dilation_binary(Mat input_image){
     Mat dilated_image = input_image.clone();
 	for (int i=0; i<input_image.rows; i++)
@@ -80,60 +134,45 @@ Mat dilation_binary(Mat input_image){
 }
 
 Mat erosion_gray(Mat input_image) {
-	int mask[3][3];
-	for (int x=0; x<3; x++) {
-		for (int y=0; y<3; y++) {
-			mask[x][y] = 1;
-		}
-	}
 	int list[10];
 	Mat eroded_image = input_image.clone();
 	for (int i=0; i<input_image.rows; i++)
         for (int j=0; j<input_image.cols; j++)
             eroded_image.at<uchar>(i,j)=0;
 
-	for (int i=1; i<input_image.rows-1; i++) {
-		for (int j=1; j<input_image.cols-1; j++) {
-			int  n=0;
-			for (int x=-1; x<= 1; x++) {
-				for (int y=-1; y<= 1; y++) {
-					list[n++] = input_image.at<uchar>(i + x, j + y)*mask[x + 1][y + 1];
-				}
-			}
-           int min = list[0]; 
-            for (i=1; i<n; i++) 
-                if (list[i] < min) 
-                    min = list[i];
-			eroded_image.at<uchar>(i, j) = min;
+	for (int i=0; i<input_image.rows; i++){
+    	for (int j=0; j<input_image.cols; j++){
+      		int l = 0;
+      		for (int m=0; m<3; m++){
+        		for (int n=0; n<3; n++) {
+          			if ((i-1+m) >= 0 && (j-1+n) >=0 && (i-1+m) < input_image.rows && (j-1+n) < input_image.cols){
+            			list[l++] = input_image.at<uchar>(i-1+m, j-1+n);
+          			}
+        		}
+      		}
+			eroded_image.at<uchar>(i, j) = *min_element(list,list+10);;
 		}
 	}
 	return eroded_image;
 }
 
 Mat dilation_gray(Mat input_image) {
-
-	Mat dilated_image = input_image.clone();
-	int mask[3][3];
-	for (int x=0; x<3; x++) {
-		for (int y=0; y<3; y++) {
-			mask[x][y] = 1;
-		}
-	}
+	Mat dilated_image=input_image.clone();
+	for (int i=0; i<input_image.rows; i++)
+        for (int j=0; j<input_image.cols; j++)
+            dilated_image.at<uchar>(i,j)=0;
 	int list[10];
-	for (int i=1; i<input_image.rows-2; i++) {
-		for (int j=1; j<input_image.cols-2; j++) {
-			int  n=0;
-			for (int x=-1; x<=1; x++) {
-				for (int y=-1; y<=1; y++) {
-					list[n] = input_image.at<uchar>(i + x, j + y)*mask[x + 1][y + 1];
-					n++;
+	for (int i=0; i<input_image.rows; i++){
+		for (int j=0; j<input_image.cols; j++) {
+		int l= 0;
+		for (int m=0; m<3; m++){
+			for (int n=0; n<3; n++) {
+				if ((i-1+m) >= 0 && (j-1+n) >=0 && (i-1+m) < input_image.rows && (j-1+n) < input_image.cols){
+					list[l++] =input_image.at<uchar>(i-1+m, j-1+n);
 				}
 			}
-			int max = list[0]; 
-            for (i=1; i<n; i++) 
-                if (list[i] > max) 
-                    max = list[i];
-			dilated_image.at<uchar>(i, j) = max;
+		}
+		dilated_image.at<uchar>(i,j) = *min_element(list,list+10);
 		}
 	}
 	return dilated_image;
@@ -174,9 +213,10 @@ int main(){
     Mat dilated_image=dilation_binary(eroded_binary_image);
     imshow("Dilated Binary Image", dilated_image);
     Mat seperated_img=performErosionDilation(binary_image);
+	int components = count_regions(dilated_image);
+	cout<<"Count: "<< components;
     imshow("Seperated Image", seperated_img);
-    
-    imshow("Eroded Grayscale Image",erosion_gray(input_image_odd));
+	imshow("Eroded Grayscale Image",erosion_gray(input_image_odd));
     imshow("Dilation Grayscale Image",dilation_gray(input_image_odd));
     waitKey(0);
     return 0;
